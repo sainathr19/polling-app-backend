@@ -6,12 +6,11 @@ mod routes;
 
 use actix_cors::Cors;
 use actix_web::{
-    get,
-    web::{self, Data},
-    App, HttpResponse, HttpServer, Responder,
+    get, http::header::CONTENT_TYPE, middleware::from_fn, web::{self, Data}, App, HttpResponse, HttpServer, Responder
 };
 use db::MongoDB;
 use helpers::{jwt::JWT, poll_state::PollState, webauthn::startup};
+use middlewares::auth_middleware::jwt_middleware;
 
 #[get("/")]
 async fn greet() -> impl Responder {
@@ -37,12 +36,7 @@ async fn main() -> std::io::Result<()> {
             Cors::default()
                 .allowed_origin("http://localhost:3000")
                 .allowed_methods(vec!["GET", "POST"])
-                .allowed_headers(vec![
-                    "Content-Type",
-                    "Authorization",
-                    "Cookie",
-                    "X-Requested-With",
-                ])
+                .allowed_headers(vec![CONTENT_TYPE])
                 .expose_headers(["Set-Cookie"])
                 .supports_credentials()
                 .max_age(3600),
@@ -53,7 +47,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(jwt.clone()) 
             .service(greet)
             .service(web::scope("/auth").configure(routes::auth_routes::init))
-            .service(web::scope("/polls").configure(routes::poll_routes::init))
+            .service(
+                web::scope("")
+                    .wrap(from_fn(jwt_middleware))
+                    .service(web::scope("/polls").configure(routes::poll_routes::init))
+            )
     })
     .bind(("127.0.0.1", 5000))?
     .run()
