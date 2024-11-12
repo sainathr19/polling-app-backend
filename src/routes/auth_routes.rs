@@ -35,12 +35,9 @@ async fn verify_auth_token(req: HttpRequest , jwt : Data<JWT>) -> impl Responder
     match req.cookie("authToken") {
         Some(cookie) => {
             let token = cookie.value();
-            match jwt.verify(token) {
+            match jwt.decode(token) {
                 Ok(val) => {
-                    if val{
-                        return HttpResponse::Ok().body("Token is valid")
-                    }
-                    HttpResponse::Unauthorized().body("Invalid Token")
+                        return HttpResponse::Ok().body(val.username)
                 },
                 Err(_) => HttpResponse::Unauthorized().body("Invalid or expired token"),
             }
