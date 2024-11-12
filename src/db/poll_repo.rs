@@ -67,7 +67,7 @@ impl PollRepository {
     ) -> Result<Vec<Poll>, Box<dyn std::error::Error>> {
         let filter = match user_id {
             Some(val) => doc! {
-                "userId" : val.clone()
+                "creatorId" : val.clone()
             },
             None => doc! {},
         };
