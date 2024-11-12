@@ -1,5 +1,8 @@
+use actix_web::HttpMessage;
+use actix_web::HttpRequest;
 use futures::StreamExt;
 use crate::db::MongoDB;
+use crate::helpers::jwt::Claims;
 use crate::helpers::poll_state::PollState;
 use crate::models::PollOption;
 use crate::models::PollStatus;
@@ -47,11 +50,12 @@ async fn create_new_poll(
 #[get("/all")]
 async fn fetch_polls(mongo_db: Data<MongoDB>, query: web::Query<FetchPollQuery>) -> impl Responder {
     let user_id = query.into_inner().user_id;
-    let response = mongo_db.poll_collection.fetch_polls(user_id).await;
+    println!("{:?}",&user_id);
+    let response = mongo_db.poll_collection.fetch_polls(user_id.clone()).await;
     let poll_data = match response {
         Ok(polls) => {
             if polls.is_empty() {
-                return HttpResponse::NotFound().body("No Polls Found".to_string());
+                return HttpResponse::NotFound().body(format!("No Polls Found for userId : {:?}",&user_id).to_string());
             }
             polls
         }
@@ -81,15 +85,16 @@ async fn fetch_poll_data(mongo_db: Data<MongoDB>, poll_id: web::Path<String>) ->
 
 #[post("/{poll_id}/vote")]
 async fn add_new_vote(
+    req: HttpRequest,
     mongo_db: Data<MongoDB>,
     poll_id: web::Path<String>,
     query: web::Query<VoteQueryParams>,
     poll_state: Data<PollState>,
 ) -> impl Responder {
+    let user = req.extensions().get::<Claims>().cloned().unwrap();
     let poll_id = poll_id.into_inner();
     let option_id = query.option_id.clone();
-    let user_id = "sainathr19".to_string();
-
+    let user_id = user.username;
     // Check if the user has already voted
     // let check_user_vote = mongo_db
     //     .vote_collection
@@ -138,8 +143,9 @@ async fn add_new_vote(
 
 
 #[post("/{poll_id}/close")]
-async fn close_poll(mongo_db: Data<MongoDB>, poll_id : web::Path<String>) -> impl Responder {
-    let user_id = String::from("sainathr19");
+async fn close_poll(req : HttpRequest,mongo_db: Data<MongoDB>, poll_id : web::Path<String>) -> impl Responder {
+    let user = req.extensions().get::<Claims>().cloned().unwrap();
+    let user_id = user.username;
     let poll_id = poll_id.into_inner();
     let poll_creator = match mongo_db
         .poll_collection
@@ -170,9 +176,10 @@ async fn close_poll(mongo_db: Data<MongoDB>, poll_id : web::Path<String>) -> imp
 }
 
 #[post("/{poll_id}/reset")]
-pub async fn reset_poll(mongo_db: Data<MongoDB>, poll_id: web::Path<String>) -> impl Responder {
+pub async fn reset_poll(req:HttpRequest,mongo_db: Data<MongoDB>, poll_id: web::Path<String>) -> impl Responder {
+    let user = req.extensions().get::<Claims>().cloned().unwrap();
     let poll_id = poll_id.into_inner();
-    let user_id = String::from("sainathr19");
+    let user_id = user.username;
     let poll_creator = match mongo_db
         .poll_collection
         .get_poll_creator(poll_id.clone())
@@ -202,9 +209,10 @@ pub async fn reset_poll(mongo_db: Data<MongoDB>, poll_id: web::Path<String>) -> 
 }
 
 #[get("/{poll_id}/delete")]
-pub async fn delete_poll(mongo_db: Data<MongoDB>, poll_id: web::Path<String>) -> impl Responder {
+pub async fn delete_poll(req: HttpRequest,mongo_db: Data<MongoDB>, poll_id: web::Path<String>) -> impl Responder {
+    let user = req.extensions().get::<Claims>().cloned().unwrap();
     let poll_id = poll_id.into_inner();
-    let user_id = String::from("sainathr19");
+    let user_id = user.username;
     let poll_creator = match mongo_db
         .poll_collection
         .get_poll_creator(poll_id.clone())
@@ -305,6 +313,5 @@ pub fn init(config: &mut web::ServiceConfig) {
         .service(reset_poll)
         .service(fetch_polls)
         .service(delete_poll)
-        .service(get_poll_overview)
-        .service(live_poll_updates);
+        .service(get_poll_overview);
 }
