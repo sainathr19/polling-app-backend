@@ -11,6 +11,7 @@ use actix_web::{
 use db::MongoDB;
 use helpers::{jwt::JWT, poll_state::PollState, webauthn::startup};
 use middlewares::auth_middleware::jwt_middleware;
+use routes::poll_routes::live_poll_updates;
 
 #[get("/")]
 async fn greet() -> impl Responder {
@@ -47,6 +48,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(jwt.clone()) 
             .service(greet)
             .service(web::scope("/auth").configure(routes::auth_routes::init))
+            .service(live_poll_updates)
             .service(
                 web::scope("")
                     .wrap(from_fn(jwt_middleware))
