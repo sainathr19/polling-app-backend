@@ -20,12 +20,14 @@ use super::types::VoteQueryParams;
 
 #[post("/new")]
 async fn create_new_poll(
+    req : HttpRequest,
     mongo_db: Data<MongoDB>,
     poll_data: web::Json<NewPollBody>,
 ) -> impl Responder {
     let poll_id = nanoid!(10);
+    let user = req.extensions().get::<Claims>().cloned().unwrap();
     let title = poll_data.title.clone();
-    let creator_id = poll_data.username.clone();
+    let creator_id = user.username.clone();
     let status = PollStatus::OPEN;
 
     let options: Vec<PollOption> = poll_data
