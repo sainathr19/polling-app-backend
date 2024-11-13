@@ -311,7 +311,6 @@ pub fn init(config: &mut web::ServiceConfig) {
         .service(add_new_vote)
         .service(close_poll)
         .service(reset_poll)
-        .service(fetch_polls)
         .service(delete_poll)
         .service(get_poll_overview);
 }
