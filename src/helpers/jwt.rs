@@ -63,3 +63,78 @@ impl JWT {
         }
     }
 }
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup_jwt() -> JWT {
+        env::set_var("JWT_SECRET", "test_secret_key");
+        JWT::init()
+    }
+
+    #[test]
+    fn test_jwt_sign() {
+        let jwt = setup_jwt();
+        let result = jwt.sign("testuser".to_string());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_jwt_decode_valid_token() {
+        let jwt = setup_jwt();
+        let token = jwt.sign("testuser".to_string()).unwrap();
+        let result = jwt.decode(&token);
+        
+        assert!(result.is_ok());
+        let claims = result.unwrap();
+        assert_eq!(claims.username, "testuser");
+        assert_eq!(claims.iss, "http://www.example.com");
+        assert_eq!(claims.sub, "name of claim");
+    }
+
+    #[test]
+    fn test_jwt_verify_valid_token() {
+        let jwt = setup_jwt();
+        let token = jwt.sign("testuser".to_string()).unwrap();
+        let result = jwt.verify(&token);
+        
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+    }
+
+    #[test]
+    fn test_jwt_verify_invalid_token() {
+        let jwt = setup_jwt();
+        let result = jwt.verify("invalid.token.here");
+        
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_jwt_decode_invalid_token() {
+        let jwt = setup_jwt();
+        let result = jwt.decode("invalid.token.here");
+        
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_jwt_token_expiration() {
+        let jwt = setup_jwt();
+        let token = jwt.sign("testuser".to_string()).unwrap();
+        assert!(jwt.verify(&token).unwrap());
+    }
+
+    #[test]
+    fn test_different_secret_keys() {
+        let jwt1 = setup_jwt();
+        let token = jwt1.sign("testuser".to_string()).unwrap();        
+        env::set_var("JWT_SECRET", "different_secret_key");
+        let jwt2 = JWT::init();
+        assert!(jwt2.verify(&token).is_err());
+    }
+}
