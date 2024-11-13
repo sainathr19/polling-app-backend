@@ -29,9 +29,4 @@ impl UserRepository {
             .await?;
         Ok(users)
     }
-    // pub async fn delete_by_username(&self, username: &str) -> mongodb::error::Result<u64> {
-    //     let filter = doc! { "username": username };
-    //     let result = self.collection.delete_one(filter).await?;
-    //     Ok(result.deleted_count)
-    // }
 }
