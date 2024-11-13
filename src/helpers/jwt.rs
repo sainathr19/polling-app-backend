@@ -1,14 +1,13 @@
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
     env,
     time::{SystemTime, UNIX_EPOCH},
 };
 use dotenv::dotenv;
 
 // Define the claims structure
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize,Clone)]
 pub struct Claims {
     pub username: String,
     pub iss: String,
