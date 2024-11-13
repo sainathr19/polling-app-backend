@@ -98,18 +98,18 @@ async fn add_new_vote(
     let option_id = query.option_id.clone();
     let user_id = user.username;
     // Check if the user has already voted
-    // let check_user_vote = mongo_db
-    //     .vote_collection
-    //     .check_vote_exists(&user_id, &poll_id)
-    //     .await;
-    // let is_voted_user = match check_user_vote {
-    //     Ok(val) => val,
-    //     Err(_) => false,
-    // };
+    let check_user_vote = mongo_db
+        .vote_collection
+        .check_vote_exists(&user_id, &poll_id)
+        .await;
+    let is_voted_user = match check_user_vote {
+        Ok(val) => val,
+        Err(_) => false,
+    };
 
-    // if is_voted_user {
-    //     return HttpResponse::Forbidden().body("User already voted");
-    // }
+    if is_voted_user {
+        return HttpResponse::Forbidden().body("User already voted");
+    }
 
     let _ = mongo_db
         .vote_collection
