@@ -22,7 +22,7 @@ pub async fn jwt_middleware(
                             req.extensions_mut().insert(claim);
                             return next.call(req).await
                         },
-                        Err(err)=>{
+                        Err(_)=>{
                             return Err(actix_web::error::ErrorUnauthorized("Invalid token"));
                         }
                     }

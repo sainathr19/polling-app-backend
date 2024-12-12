@@ -1,0 +1,64 @@
+name: Deploy Backend to AWS EC2 with Docker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-south-1 
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      IMAGE_TAG: latest 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Cache backend
+        id: backend-cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-backend-${{ hashFiles('survey-sphere-be/Dockerfile', 'survey-sphere-be/**/*') }}
+          restore-keys: |
+            ${{ runner.os }}-docker-backend-
+
+      - name: Build and push backend Docker image
+        run: |
+          docker build -f survey-sphere-be/Dockerfile \
+            --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
+            --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            -t $DOCKER_USERNAME/survey-sphere-be-be:$IMAGE_TAG survey-sphere-be
+
+          # Log in to Docker Hub
+          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+
+          # Push the backend image to Docker Hub
+          docker push $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG
+
+      - name: SSH into EC2 and deploy backend
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Pull the Docker image from Docker Hub
+            docker pull $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG
+
+            # Stop and remove existing backend container if it exists
+            docker stop survey-sphere-be || true
+            docker rm survey-sphere-be || true
+
+            # Run the new backend container
+            docker run -d \
+              --name survey-sphere-be \
+              -p 3001:3001 \
+              -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG
