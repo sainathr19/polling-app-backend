@@ -28,12 +28,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-docker-backend-
 
+      # Build and push the backend Docker image to Docker Hub
       - name: Build and push backend Docker image
         run: |
           docker build -f survey-sphere-be/Dockerfile \
-            --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
-            --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            -t $DOCKER_USERNAME/survey-sphere-be-be:$IMAGE_TAG survey-sphere-be
+          --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
+          --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
+          -t $DOCKER_USERNAME/survey-sphere-be:latest \
+          survey-sphere-be/
 
           # Log in to Docker Hub
           echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
