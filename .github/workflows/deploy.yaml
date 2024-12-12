@@ -23,13 +23,23 @@ jobs:
             --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
             -t $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG .
       
-      - name: Login to Docker Hub
+      - name: Docker Login
         run: |
-          echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+          echo "Attempting to log in to Docker Hub"
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          if [ $? -ne 0 ]; then
+            echo "Docker login failed"
+            exit 1
+          fi
       
-      - name: Push backend Docker image
+      - name: Push Docker Image
         run: |
+          echo "Attempting to push image to Docker Hub"
           docker push $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG
+          if [ $? -ne 0 ]; then
+            echo "Docker push failed"
+            exit 1
+          fi
       
       - name: SSH into EC2 and deploy backend
         uses: appleboy/ssh-action@v0.1.7
