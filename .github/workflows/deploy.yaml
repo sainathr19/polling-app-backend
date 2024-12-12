@@ -41,22 +41,17 @@ jobs:
             exit 1
           fi
       
-      - name: SSH into EC2 and deploy backend
-        uses: appleboy/ssh-action@v0.1.7
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Pull the Docker image from Docker Hub
-            docker pull ${{ secrets.DOCKER_USERNAME }}/survey-sphere-be:${{ env.IMAGE_TAG }}
-            # Stop and remove existing backend container if it exists
-            docker stop survey-sphere-be || true
-            docker rm survey-sphere-be || true
-            # Run the new backend container
-            docker run -d \
-              --name survey-sphere-be \
-              -p 3001:3001 \
-              -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              ${{ secrets.DOCKER_USERNAME }}/survey-sphere-be:${{ env.IMAGE_TAG }}
+            # Pull the image with explicit path
+            sudo docker pull ${{ env.IMAGE_NAME }}:latest
+            # Run with explicit command
+            sudo docker run -d \
+            --name databases-performance-test \
+            --restart always \
+            -p 3000:3000 \
+            --env-file /home/${{ env.EC2_USER }}/app.env \
+            ${{ env.IMAGE_NAME }}:latest \
+            /app/target/release/databases-performance-test
