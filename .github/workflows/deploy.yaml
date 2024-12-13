@@ -12,8 +12,8 @@ jobs:
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_NAME: username/my-app  # Replace with your Docker Hub repository
-      IMAGE_TAG: latest           # Always use 'latest' tag
+      IMAGE_NAME: sainathr19/backend
+      IMAGE_TAG: latest  
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
