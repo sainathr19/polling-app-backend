@@ -28,3 +28,7 @@ serde_json = "1.0.132"
 tokio-stream = { version = "0.1.16", features = ["sync"] }
 futures = "0.3.31"
 parking_lot = "0.12.3"
+
+[[bin]]
+name = "survey-sphere-be"
+path = "src/main.rs"
