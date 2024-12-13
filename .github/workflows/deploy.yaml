@@ -1,109 +1,42 @@
-name: Deploy to AWS EC2 with Docker - Backend Only
+name: Build and Publish Docker Image
 
 on:
   push:
     branches:
-      - main # Trigger deployment on pushes to the main branch
+      - main # Trigger the workflow on pushes to the main branch
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: ap-south-1 # AWS region
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }} # Docker Hub username
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }} # Docker Hub password
-      IMAGE_TAG: latest # Image tag for the backend
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      IMAGE_NAME: sainathr19/backend 
+      IMAGE_TAG: latest
 
     steps:
       # 1. Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Cache Docker layers for the backend
-      - name: Cache Docker layers for backend
-        id: backend-cache
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-docker-backend-${{ hashFiles('polling-site-backend/Dockerfile', 'polling-site-backend/**/*') }}
-          restore-keys: |
-            ${{ runner.os }}-docker-backend-
-
-      # 3. Build the backend Docker image
+      # 2. Build the backend Docker image
       - name: Build backend Docker image
         run: |
           # Ensure Docker is running
           sudo service docker start
 
           # Build the Docker image
-          docker build -f polling-site-backend/Dockerfile \
+          docker build \
             --build-arg DATABASE_URL=${{ secrets.DATABASE_URL }} \
             --build-arg JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            -t $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG polling-site-backend/
+            -t $IMAGE_NAME:$IMAGE_TAG .
 
-      # 4. Log in to Docker Hub
+      # 3. Log in to Docker Hub
       - name: Log in to Docker Hub
         run: echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
 
-      # 5. Push the backend image to Docker Hub
+      # 4. Push the backend image to Docker Hub
       - name: Push backend Docker image to Docker Hub
         run: |
-          docker push $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG
-
-      # 6. SSH into EC2 and install Docker and Docker Compose
-      - name: SSH into EC2 and Install Docker
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Update the system
-            sudo apt-get update -y
-            # Install dependencies
-            sudo apt-get install -y \
-              apt-transport-https \
-              ca-certificates \
-              curl \
-              software-properties-common
-            # Install Docker
-            curl -fsSL https://get.docker.com -o get-docker.sh
-            sudo sh get-docker.sh
-            # Install Docker Compose
-            sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-            # Start Docker service
-            sudo systemctl enable docker
-            sudo systemctl start docker
-
-      # 7. SSH into EC2 to deploy the backend container
-      - name: SSH into EC2 and deploy backend container
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Pull the Docker image from Docker Hub
-            docker pull $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG
-
-            # Create a docker-compose.yml file for the backend
-            echo "
-            version: '3.8'
-            services:
-              backend:
-                image: $DOCKER_USERNAME/survey-sphere-be:$IMAGE_TAG
-                ports:
-                  - '3001:3001'
-                environment:
-                  - DATABASE_URL=${{ secrets.DATABASE_URL }}
-                  - JWT_SECRET=${{ secrets.JWT_SECRET }}
-            " > /home/ubuntu/docker-compose.yml
-
-            # Check if docker-compose.yml was created
-            cat /home/ubuntu/docker-compose.yml
-            
-            # Start the backend container with Docker Compose
-            cd /home/ubuntu
-            sudo docker-compose up -d
+          docker push $IMAGE_NAME:$IMAGE_TAG
