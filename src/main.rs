@@ -56,7 +56,7 @@ async fn main() -> std::io::Result<()> {
                     .service(web::scope("/polls").configure(routes::poll_routes::init))
             )
     })
-    .bind(("127.0.0.1", 5000))?
+    .bind(("0.0.0.0", 5000))?
     .run()
     .await
 }
