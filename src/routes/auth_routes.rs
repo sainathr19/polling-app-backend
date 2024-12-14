@@ -56,6 +56,7 @@ async fn logout() -> impl Responder {
             .secure(true)
             .path("/")  
             .max_age(Duration::seconds(0))
+            .same_site(SameSite::None)
             .finish();
 
     response.add_cookie(&cookie).unwrap();
