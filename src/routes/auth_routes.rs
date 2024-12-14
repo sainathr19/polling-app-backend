@@ -46,6 +46,23 @@ async fn verify_auth_token(req: HttpRequest , jwt : Data<JWT>) -> impl Responder
     }
 }
 
+#[get("/logout")]
+async fn logout() -> impl Responder {
+
+    let mut response = HttpResponse::Ok().body("Logged out successfully");
+
+    let cookie = Cookie::build("authToken", "")
+            .http_only(true)
+            .secure(true)
+            .path("/")  
+            .max_age(Duration::seconds(0))
+            .finish();
+
+    response.add_cookie(&cookie).unwrap();
+
+    response
+}
+
 #[post("/register/start/{username}")]
 pub async fn start_registration(
     mongo_db: web::Data<MongoDB>, 
@@ -257,5 +274,7 @@ pub fn init(config: &mut web::ServiceConfig) {
         .service(start_registration)
         .service(finish_registration)
         .service(start_authentication)
-        .service(finish_authentication).service(verify_auth_token);
+        .service(finish_authentication)
+        .service(verify_auth_token)
+        .service(logout);
 } 
