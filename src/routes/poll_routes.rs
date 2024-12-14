@@ -52,7 +52,6 @@ async fn create_new_poll(
 #[get("/all")]
 async fn fetch_polls(mongo_db: Data<MongoDB>, query: web::Query<FetchPollQuery>) -> impl Responder {
     let user_id = query.into_inner().user_id;
-    println!("{:?}",&user_id);
     let response = mongo_db.poll_collection.fetch_polls(user_id.clone()).await;
     let poll_data = match response {
         Ok(polls) => {
@@ -129,8 +128,7 @@ async fn add_new_vote(
         Ok(None) => {
             return HttpResponse::InternalServerError().json("Unknown error occurred");
         }
-        Err(err) => {
-            println!("{:?}", err);
+        Err(_) => {
             return HttpResponse::InternalServerError().json("Error fetching latest poll data");
         }
     };
@@ -238,8 +236,7 @@ pub async fn delete_poll(req: HttpRequest,mongo_db: Data<MongoDB>, poll_id: web:
     match response {
         Ok(_) => HttpResponse::Ok()
             .body(format!("Poll with Id {} deleted SuccessFully", poll_id).to_string()),
-        Err(err) => {
-            println!("{:?}", err);
+        Err(_) => {
             HttpResponse::InternalServerError()
                 .body(format!("Failed to Delete Poll with Id : {}", poll_id).to_string())
         }
@@ -284,16 +281,14 @@ async fn get_poll_overview(
         Ok(None) => {
             return HttpResponse::NotFound().json("Poll not found");
         }
-        Err(err) => {
-            println!("Error fetching poll data: {:?}", err);
+        Err(_) => {
             return HttpResponse::InternalServerError().json("Error fetching poll data");
         }
     };
 
     let last_10_votes = match mongo_db.vote_collection.get_last_10_votes(poll_id.clone()).await {
         Ok(votes) => votes,
-        Err(err) => {
-            println!("Error fetching last 10 votes: {:?}", err);
+        Err(_) => {
             return HttpResponse::InternalServerError().json("Error fetching last 10 votes");
         }
     };

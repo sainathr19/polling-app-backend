@@ -46,7 +46,6 @@ impl PollRepository {
             .insert_one(new_poll)
             .await
             .map_err(|e| format!("Error Creating Poll : {:?}", e))?;
-        println!("Poll creation SuccessFull With id : {}", poll_id);
         Ok(response)
     }
 

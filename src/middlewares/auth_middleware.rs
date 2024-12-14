@@ -7,34 +7,18 @@ pub async fn jwt_middleware(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-    println!("JWT middleware called");
     let req = req;
 
     let auth_token = req.cookie("authToken").map(|cookie| cookie.value().to_string());
     let jwt = JWT::init();
-    match auth_token{
-        Some(token)=>{
-            match jwt.verify(&token) {
-                Ok(true) => {
-                    let claims = jwt.decode(&token);
-                    match claims {
-                        Ok(claim)=>{
-                            req.extensions_mut().insert(claim);
-                            return next.call(req).await
-                        },
-                        Err(_)=>{
-                            return Err(actix_web::error::ErrorUnauthorized("Invalid token"));
-                        }
-                    }
-                }
-                _ => {
-                    return Err(actix_web::error::ErrorUnauthorized("Invalid token"));
-                }
+    if let Some(token) = auth_token {
+        if jwt.verify(&token).map_err(|_| actix_web::error::ErrorUnauthorized("Invalid token")).is_ok() {
+            if let Ok(claim) = jwt.decode(&token) {
+                req.extensions_mut().insert(claim);
+                return next.call(req).await;
             }
-        },
-        None =>{
-            return Err(actix_web::error::ErrorUnauthorized("No token provided"));
         }
     }
+    Err(actix_web::error::ErrorUnauthorized("No token provided or Invalid token"))
 }
 

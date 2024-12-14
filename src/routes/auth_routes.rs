@@ -31,18 +31,15 @@ impl actix_web::ResponseError for Error {
 }
 
 #[get("/verify")]
-async fn verify_auth_token(req: HttpRequest , jwt : Data<JWT>) -> impl Responder {
-    match req.cookie("authToken") {
-        Some(cookie) => {
-            let token = cookie.value();
-            match jwt.decode(token) {
-                Ok(val) => {
-                        return HttpResponse::Ok().body(val.username)
-                },
-                Err(_) => HttpResponse::Unauthorized().body("Invalid or expired token"),
-            }
+async fn verify_auth_token(req: HttpRequest, jwt: Data<JWT>) -> impl Responder {
+    if let Some(cookie) = req.cookie("authToken") {
+        if let Ok(val) = jwt.decode(cookie.value()) {
+            return HttpResponse::Ok().body(val.username);
+        } else {
+            return HttpResponse::Unauthorized().body("Invalid or expired token");
         }
-        None => HttpResponse::BadRequest().body("authToken cookie not found"),
+    } else {
+        return HttpResponse::BadRequest().body("authToken cookie not found");
     }
 }
 
@@ -79,8 +76,7 @@ pub async fn start_registration(
                 None=>Uuid::new_v4()
             }
         },
-        Err(err)=>{
-            println!("{:?}",err);
+        Err(_)=>{
             return HttpResponse::InternalServerError().json("Error Validating Username");
         }
     };
@@ -101,8 +97,7 @@ pub async fn start_registration(
     let reg_state_repo = &mongo_db.reg_state_collection;
     match reg_state_repo.insert_state(&username, &user_unique_id.to_string(), reg_state_value).await {
         Ok(_) => HttpResponse::Ok().json(ccr),
-        Err(e) => {
-            println!("{:?}", e);
+        Err(_) => {
             HttpResponse::InternalServerError().json("Unable to insert registration state into MongoDB")
         }
     }
@@ -140,20 +135,15 @@ pub async fn finish_registration(
     };
     
     let user_repo = &mongo_db.user_collection;
-    match user_repo.create_new_user(&user).await {
-        Ok(_) => println!("Successfully created new user: {}", username),
-        Err(e) => {
-            return HttpResponse::InternalServerError().body(format!("Error creating new user: {}", e))
-        }
+    
+    if let Err(e) = user_repo.create_new_user(&user).await {
+        return HttpResponse::InternalServerError().body(format!("Error creating new user: {}", e))
     }
 
     match reg_state_repo.delete_by_username(&username).await {
-        Ok(_) => println!("Successfully deleted reg_state for username: {}", username),
-        Err(e) => {
-            return HttpResponse::InternalServerError().body(format!("Error deleting reg_state: {}", e))
-        }
+        Ok(_) => return HttpResponse::Ok().finish(),
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Error deleting reg_state: {}", e))
     }
-    HttpResponse::Ok().finish()
 }
 
 
@@ -177,8 +167,7 @@ pub async fn start_authentication(
     // Fetching the passkeys of user from the database
     let user_keys = match mongo_db.user_collection.fetch_keys_for_user(&username).await{
         Ok(val)=>val,
-        Err(err)=>{
-            println!("{:?}",err);
+        Err(_)=>{
             return HttpResponse::InternalServerError().body("Error fetching user credentials")
         }
     };
@@ -186,8 +175,7 @@ pub async fn start_authentication(
     for user in user_keys{
         let credential: Passkey = match serde_json::from_value(user.sk) {
             Ok(val)=>val,
-            Err(err)=>{
-                println!("{:?}",err);
+            Err(_)=>{
                 return HttpResponse::BadRequest().json("User Keys Corrupted,Unable to Deserialize")
             }  
         };
@@ -212,8 +200,7 @@ pub async fn start_authentication(
     let auth_state_repo = &mongo_db.auth_state_collection;
     match auth_state_repo.insert_state(&username, auth_state_value).await {
         Ok(_) => HttpResponse::Ok().json(rcr),
-        Err(e) => {
-            println!("{:?}", e);
+        Err(_) => {
             HttpResponse::InternalServerError().json("Unable to insert registration state into MongoDB")
         }
     }
@@ -242,11 +229,9 @@ pub async fn finish_authentication(
         Ok(result) => result,
         Err(e) => return HttpResponse::BadRequest().body(format!("Authentication finish error: {}", e)),
     };
-    match auth_state_repo.delete_by_username(&username).await {
-        Ok(_) => println!("Successfully deleted auth_state for username: {}", username),
-        Err(e) => {
-            return HttpResponse::InternalServerError().body(format!("Error deleting auth_state: {}", e))
-        }
+
+    if let Err(e) = auth_state_repo.delete_by_username(&username).await {
+        return HttpResponse::InternalServerError().body(format!("Error deleting auth_state: {}", e))
     }
 
     // Create JWT token
